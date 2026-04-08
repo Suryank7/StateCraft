@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-bg-deepest text-gray-100 font-sans;
+  }
+}
+
+/* Syntax Highlighting overrides */
+.hl-kw { color: #c084fc; font-weight: 500; }
+.hl-str { color: #4ade80; }
+.hl-num { color: #facc15; }
+.hl-cm { color: #64748b; font-style: italic; }
+.hl-fn { color: #60a5fa; }

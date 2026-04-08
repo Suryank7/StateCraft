@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="StateCraft — Transform natural language into interactive state machine diagrams, production-ready code, and deep analysis. The intelligent UI state machine generator.">
+  <meta name="keywords" content="state machine, statechart, XState, UI states, finite automata, code generator, diagram">
+  <meta name="author" content="StateCraft">
+  <meta name="theme-color" content="#030712">
+  <title>StateCraft — UI State Machine Generator</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="app">
+  <!-- ═══════════════════════════════════════════════════════
+       HEADER
+       ═══════════════════════════════════════════════════════ -->
+  <header class="app-header">
+    <div class="logo">
+      <div class="logo-icon">⚡</div>
+      <span class="logo-text">StateCraft</span>
+      <span class="logo-badge">v1.0</span>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn btn-ghost btn-sm" id="btn-share" title="Share (Ctrl+S)">
+        🔗 Share
+      </button>
+      <button class="btn btn-ghost btn-sm" id="btn-export-svg" title="Export SVG (Ctrl+E)">
+        📥 Export SVG
+      </button>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════════════════
+       MAIN 4-PANEL GRID
+       ═══════════════════════════════════════════════════════ -->
+  <main class="app-main">
+
+    <!-- ─── INPUT PANEL (top-left) ─── -->
+    <section class="panel input-panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span class="panel-title-icon">✏️</span> Describe States
+        </div>
+        <span class="kbd" title="Ctrl+Enter to parse">Ctrl ↵</span>
+      </div>
+      <div class="panel-body">
+        <textarea
+          id="nl-input"
+          class="nl-input"
+          placeholder="Describe your UI states in plain English...
+
+Example:
+The login form starts in the idle state.
+From idle, submitting goes to loading.
+From loading, success goes to dashboard.
+From loading, failure goes to error.
+From error, retry goes back to idle."
+          spellcheck="false"
+          aria-label="Natural language state machine description"
+        ></textarea>
+
+        <div class="input-actions">
+          <button class="btn btn-primary" id="btn-parse">
+            ⚡ Generate Machine
+          </button>
+          <button class="btn btn-secondary" id="btn-clear">
+            ✕ Clear
+          </button>
+        </div>
+
+        <div class="examples-section">
+          <div class="examples-label">Quick Examples</div>
+          <div class="examples-grid" id="examples-grid">
+            <!-- Populated by app.js -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── DIAGRAM PANEL (right, spans both rows) ─── -->
+    <section class="panel diagram-panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span class="panel-title-icon">🎯</span> State Diagram
+        </div>
+        <div class="diagram-controls">
+          <button class="btn-icon" id="btn-zoom-in" title="Zoom In">+</button>
+          <button class="btn-icon" id="btn-zoom-out" title="Zoom Out">−</button>
+          <button class="btn-icon" id="btn-reset-zoom" title="Reset View">⊡</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <!-- Stats Overlay -->
+        <div class="diagram-stats hidden" id="diagram-stats"></div>
+
+        <!-- SVG Diagram Container -->
+        <div class="diagram-container" id="diagram-container">
+          <!-- Empty State -->
+          <div class="diagram-empty" id="diagram-empty">
+            <div class="diagram-empty-icon">⚡</div>
+            <div class="diagram-empty-text">
+              Describe your UI states in the input panel, then hit <strong>Generate Machine</strong> to see your interactive state diagram here.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── ANALYSIS PANEL (bottom-left) ─── -->
+    <section class="panel analysis-panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span class="panel-title-icon">🔍</span> Analysis
+        </div>
+      </div>
+      <div class="panel-body">
+        <!-- Empty State -->
+        <div class="analysis-empty" id="analysis-empty">
+          <p>Analysis results will appear here after generating a state machine.</p>
+        </div>
+
+        <!-- Analysis Content -->
+        <div class="hidden" id="analysis-content">
+          <!-- Summary Cards -->
+          <div class="analysis-summary" id="analysis-summary"></div>
+
+          <!-- Issue List -->
+          <div class="issue-list" id="issue-list"></div>
+
+          <!-- Coverage Matrix -->
+          <div class="coverage-matrix hidden" id="coverage-matrix"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ═══════════════════════════════════════════════════════
+       OUTPUT PANEL (Bottom drawer — overlays analysis on mobile)
+       ═══════════════════════════════════════════════════════ -->
+  <section class="panel output-panel" id="output-panel" style="
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 340px;
+    z-index: 20;
+    border-top: 1px solid var(--glass-border);
+    display: flex;
+    flex-direction: column;
+    transform: translateY(calc(100% - 44px));
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  ">
+    <!-- Tab Bar (always visible — acts as drawer handle) -->
+    <div class="tab-bar" id="output-tab-bar">
+      <button class="tab-btn active" data-tab="xstate" title="XState v5">
+        <span class="tab-btn-icon">⚙️</span> XState
+      </button>
+      <button class="tab-btn" data-tab="reducer" title="React useReducer">
+        <span class="tab-btn-icon">⚛️</span> Reducer
+      </button>
+      <button class="tab-btn" data-tab="typescript" title="TypeScript Switch">
+        <span class="tab-btn-icon">🔷</span> TypeScript
+      </button>
+      <button class="tab-btn" data-tab="zustand" title="Zustand Store">
+        <span class="tab-btn-icon">🐻</span> Zustand
+      </button>
+      <button class="tab-btn" data-tab="mermaid" title="Mermaid Diagram Syntax">
+        <span class="tab-btn-icon">🧜</span> Mermaid
+      </button>
+      <button class="tab-btn" data-tab="json" title="JSON Definition">
+        <span class="tab-btn-icon">📋</span> JSON
+      </button>
+      <button class="tab-btn" data-tab="simulator" title="Interactive Simulator">
+        <span class="tab-btn-icon">🎮</span> Simulator
+      </button>
+    </div>
+
+    <!-- XState Tab -->
+    <div class="tab-panel active" id="panel-xstate">
+      <div class="code-output-wrapper">
+        <div class="code-toolbar">
+          <span class="code-lang">XState v5 — TypeScript</span>
+          <button class="btn btn-sm btn-secondary btn-copy" data-format="xstate">📋 Copy</button>
+        </div>
+        <div class="code-scroll">
+          <pre class="code-block" id="code-xstate">// Generate a state machine to see XState code</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reducer Tab -->
+    <div class="tab-panel" id="panel-reducer">
+      <div class="code-output-wrapper">
+        <div class="code-toolbar">
+          <span class="code-lang">React useReducer — JavaScript</span>
+          <button class="btn btn-sm btn-secondary btn-copy" data-format="reducer">📋 Copy</button>
+        </div>
+        <div class="code-scroll">
+          <pre class="code-block" id="code-reducer">// Generate a state machine to see reducer code</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- TypeScript Tab -->
+    <div class="tab-panel" id="panel-typescript">
+      <div class="code-output-wrapper">
+        <div class="code-toolbar">
+          <span class="code-lang">TypeScript — Enum + Switch</span>
+          <button class="btn btn-sm btn-secondary btn-copy" data-format="typescript">📋 Copy</button>
+        </div>
+        <div class="code-scroll">
+          <pre class="code-block" id="code-typescript">// Generate a state machine to see TypeScript code</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Zustand Tab -->
+    <div class="tab-panel" id="panel-zustand">
+      <div class="code-output-wrapper">
+        <div class="code-toolbar">
+          <span class="code-lang">Zustand — Store Pattern</span>
+          <button class="btn btn-sm btn-secondary btn-copy" data-format="zustand">📋 Copy</button>
+        </div>
+        <div class="code-scroll">
+          <pre class="code-block" id="code-zustand">// Generate a state machine to see Zustand code</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mermaid Tab -->
+    <div class="tab-panel" id="panel-mermaid">
+      <div class="code-output-wrapper">
+        <div class="code-toolbar">
+          <span class="code-lang">Mermaid — Diagram Syntax</span>
+          <button class="btn btn-sm btn-secondary btn-copy" data-format="mermaid">📋 Copy</button>
+        </div>
+        <div class="code-scroll">
+          <pre class="code-block" id="code-mermaid">// Generate a state machine to see Mermaid syntax</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- JSON Tab -->
+    <div class="tab-panel" id="panel-json">
+      <div class="code-output-wrapper">
+        <div class="code-toolbar">
+          <span class="code-lang">JSON — State Machine Definition</span>
+          <button class="btn btn-sm btn-secondary btn-copy" data-format="json">📋 Copy</button>
+        </div>
+        <div class="code-scroll">
+          <pre class="code-block" id="code-json">// Generate a state machine to see JSON definition</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Simulator Tab -->
+    <div class="tab-panel" id="panel-simulator">
+      <div class="simulator-wrapper">
+        <!-- Current State -->
+        <div class="sim-current-state" id="sim-current-state">
+          <span class="sim-state-label" style="color: var(--text-muted)">Parse a state machine to start simulating</span>
+        </div>
+
+        <!-- Available Events -->
+        <div class="sim-events">
+          <div class="sim-events-label">Available Events</div>
+          <div class="sim-events-grid" id="sim-events-grid"></div>
+          <div class="sim-deadend hidden" id="sim-deadend"></div>
+        </div>
+
+        <!-- Controls -->
+        <div class="sim-controls">
+          <button class="btn btn-sm btn-secondary" id="btn-sim-reset">↺ Reset</button>
+          <button class="btn btn-sm btn-secondary" id="btn-sim-stepback">← Step Back</button>
+        </div>
+
+        <!-- History -->
+        <div class="sim-history">
+          <div class="sim-history-label">Transition History</div>
+          <div class="sim-history-list" id="sim-history-list"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════
+       SHARE MODAL
+       ═══════════════════════════════════════════════════════ -->
+  <div class="modal-overlay hidden" id="modal-overlay">
+    <div class="modal">
+      <h3 class="modal-title">🔗 Share State Machine</h3>
+      <div class="modal-body">
+        Share this URL to let anyone view and explore your state machine. The entire machine is encoded in the URL — no server needed.
+      </div>
+      <div class="share-url-box">
+        <input type="text" class="share-url-input" id="share-url-input" readonly>
+        <button class="btn btn-primary btn-sm" id="btn-copy-share">Copy</button>
+      </div>
+      <div style="margin-top: var(--space-4); text-align: right;">
+        <button class="btn btn-ghost btn-sm" id="btn-close-modal">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toast-container"></div>
+</div>
+
+<!-- App Script (ES Module) -->
+<script type="module" src="js/app.js"></script>
+
+<!-- Output Drawer Toggle Script -->
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const outputPanel = document.getElementById('output-panel');
+    const tabBar = document.getElementById('output-tab-bar');
+    let isExpanded = false;
+
+    tabBar.addEventListener('click', (e) => {
+      const tabBtn = e.target.closest('.tab-btn');
+      if (tabBtn) {
+        if (!isExpanded) {
+          outputPanel.style.transform = 'translateY(0)';
+          isExpanded = true;
+        }
+      }
+    });
+
+    // Close drawer when clicking outside
+    document.addEventListener('click', (e) => {
+      if (isExpanded && !outputPanel.contains(e.target)) {
+        outputPanel.style.transform = 'translateY(calc(100% - 44px))';
+        isExpanded = false;
+      }
+    });
+
+    // Allow keyboard escape to close
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && isExpanded) {
+        outputPanel.style.transform = 'translateY(calc(100% - 44px))';
+        isExpanded = false;
+      }
+    });
+  });
+</script>
+
+</body>
+</html>
