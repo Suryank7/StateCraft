@@ -3,10 +3,9 @@ import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { Sparkles, Save, Code, Play, RefreshCw, Image as ImageIcon } from 'lucide-react';
 
-// Import the legacy core engine modules we saved safely!
-import { StateMachine } from '../legacy_core/js/stateMachine.js';
-import { DiagramRenderer } from '../legacy_core/js/diagram.js';
-import { CodeGenerator } from '../legacy_core/js/codegen.js';
+import { StateMachine } from '../legacy_core/stateMachine.js';
+import { DiagramRenderer } from '../legacy_core/diagram.js';
+import { CodeGenerator } from '../legacy_core/codegen.js';
 
 export default function Workspace() {
   const { id } = useParams();
